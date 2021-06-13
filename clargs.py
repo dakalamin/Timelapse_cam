@@ -1,92 +1,62 @@
 import sys
 import validation
+from major_minor import *
 
 
-class Command:
-    DICT = dict()
-    LAST = None
-    
+class Command(Major):
     def __init__(self, name, defaultHelpOption=True):
-        if name in Command.DICT:
-            errmsg = f"{name} is an already used command"
-            raise Exception(errmsg)
-
-        Command.LAST = Command.DICT[name] = self
-        
-        self.name = name
-        self.options = dict()
-
-        if defaultHelpOption:
-            self.addNewOption('help', 'h')
-
-    def __del__(self):
-        Command.DICT.pop(self.name)
+        super().__init__(name)
+        self.options = self._minors
 
     def addOption(self, option):
-        option.attachToCommand(self)
+        self._addMinor(option)
 
-    def addNewOption(self, longname, shortname=''):
-        self.addOption(Option(longname, shortname))
+    def addNewOption(self, longname, shortname, valid=validation.DEFAULT):
+        self.addOption(Option(longname, shortname, valid))
 
-    def stackOption(option):
-        option.attachToCommand(Command.LAST)
+    @classmethod
+    def stackOption(cls, option):
+        cls._stackMinor(option)
 
-    def stackNewOption(longname, shortname=''):
-        Command.stackOption(Option(longname, shortname))
+    @classmethod
+    def stackNewOption(cls, longname, shortname, valid=validation.DEFAULT):
+        cls.stackOption(Option(longname, shortname, valid))
 
-    def Get(name):
-        #   if name not in Command.DICT:
-        #       return Command(name)
-        return Command.DICT.get(name, None)
-        
-
-class Option:
+class Option(Minor):
     def __init__(self, longname, shortname='', valid=validation.DEFAULT):
-        self.commands = set()
-        
-        self.lname = longname
-        self.sname = shortname
+        super().__init__(longname, valid)
+        self.commands = self._majors
+
+        self.shortname = shortname
 
     def __del__(self):
         for command in self.commands:
-            command.options.pop(self.lname)
-            if self.sname:
-                command.options.pop(self.sname)
+            if self.shortname:
+                command.minors.pop(self.shortname)
 
-    def isNameInCommand(name, command):
-        if name in command.options:
-            errmsg = f"{name} is an already used option in {command.name}"
-            raise Exception(errmsg)
+    def _attachToMajor(self, command):
+        super()._attachToMajor(command)
+        
+        if self.shortname:
+            type(self)._assertNameInMajor(self.shortname, command)
+            command.options[self.shortname] = self
 
     def attachToCommand(self, command):
-        Option.isNameInCommand(self.lname, command)
-        if self.sname:
-            Option.isNameInCommand(self.sname, command)
-            command.options[self.sname] = self
-        
-        command.options[self.lname] = self
-
-        self.commands.add(command)
+        _attachToMajor(major)
 
 
-def initCommandDict():
-    Command('launch')
-    Command.stackNewOption('start',  's')
-    Command.stackNewOption('finish', 'f')
-    Command.stackNewOption('path',   'p')
-    Command('cameras')
-    Command.stackNewOption('list',   'l')
-    Command.stackNewOption('info',   'i')
-    Command('config')
-    Command.stackNewOption('list',   'l')
-    Command.stackNewOption('info',   'i')
-    Command.stackNewOption('check',  'c')
-    Command.stackNewOption('edit',   'e')
-    Command.stackNewOption('reset',  'r')
-    Command('help',  False)
-    Command('about', False)
-
-
-
-if __name__ == "__main__":
-    initCommandDict()
+Command('launch')
+Command.stackNewOption('start',  's')
+Command.stackNewOption('finish', 'f')
+Command.stackNewOption('path',   'p')
+Command('cameras')
+Command.stackNewOption('list',   'l')
+Command.stackNewOption('info',   'i')
+Command('config')
+Command.stackNewOption('list',   'l')
+Command.stackNewOption('info',   'i')
+Command.stackNewOption('check',  'c')
+Command.stackNewOption('edit',   'e')
+Command.stackNewOption('reset',  'r')
+Command('help',  False)
+Command('about', False)
